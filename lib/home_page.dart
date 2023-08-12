@@ -15,8 +15,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   List info = [];
 
-  _initData() {
-    DefaultAssetBundle.of(context).loadString("json/info.json").then((value) => {info = json.decode(value)});
+  _initData() async {
+    await DefaultAssetBundle.of(context).loadString("json/info.json").then((value) => {
+          setState(() {
+            info = json.decode(value);
+          })
+        });
   }
 
   @override
@@ -62,17 +66,16 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(width: 5),
-                  InkWell(onTap: () {
-                    Get.to(() => const VideoInfo());
-                  }, child: Icon(Icons.arrow_forward, size: 20, color: color.AppColor.homePageIcons)),
+                  InkWell(
+                      onTap: () {
+                        Get.to(() => const VideoInfo());
+                      },
+                      child: Icon(Icons.arrow_forward, size: 20, color: color.AppColor.homePageIcons)),
                 ],
               ),
               const SizedBox(height: 20),
               Container(
-                width: MediaQuery
-                    .of(context)
-                    .size
-                    .width,
+                width: MediaQuery.of(context).size.width,
                 height: 230,
                 decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [
@@ -134,17 +137,11 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 5),
               SizedBox(
                 height: 180,
-                width: MediaQuery
-                    .of(context)
-                    .size
-                    .width,
+                width: MediaQuery.of(context).size.width,
                 child: Stack(
                   children: [
                     Container(
-                      width: MediaQuery
-                          .of(context)
-                          .size
-                          .width,
+                      width: MediaQuery.of(context).size.width,
                       margin: const EdgeInsets.only(top: 30),
                       height: 120,
                       decoration: BoxDecoration(
@@ -166,10 +163,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     Container(
                       height: 200,
-                      width: MediaQuery
-                          .of(context)
-                          .size
-                          .width,
+                      width: MediaQuery.of(context).size.width,
                       margin: const EdgeInsets.only(right: 200, bottom: 30),
                       decoration: BoxDecoration(
                         //color: Colors.redAccent.withOpacity(0.2),
@@ -202,8 +196,8 @@ class _HomePageState extends State<HomePage> {
                                     fontSize: 16,
                                   ),
                                   children: const [
-                                    TextSpan(text: "stick to your plan"),
-                                  ]))
+                                TextSpan(text: "stick to your plan"),
+                              ]))
                         ])),
                   ],
                 ),
@@ -219,10 +213,7 @@ class _HomePageState extends State<HomePage> {
               ]),
               Expanded(
                 child: OverflowBox(
-                  maxWidth: MediaQuery
-                      .of(context)
-                      .size
-                      .width,
+                  maxWidth: MediaQuery.of(context).size.width,
                   child: MediaQuery.removePadding(
                     removeTop: true,
                     context: context,
@@ -233,10 +224,7 @@ class _HomePageState extends State<HomePage> {
                           int b = 2 * 1 + 1;
                           return Row(children: [
                             Container(
-                                width: (MediaQuery
-                                    .of(context)
-                                    .size
-                                    .width - 90) / 2,
+                                width: (MediaQuery.of(context).size.width - 90) / 2,
                                 height: 170,
                                 margin: const EdgeInsets.only(left: 30, bottom: 15, top: 15),
                                 padding: const EdgeInsets.only(bottom: 5),
@@ -256,15 +244,12 @@ class _HomePageState extends State<HomePage> {
                                     ]),
                                 child: Center(
                                     child: Align(
-                                      alignment: Alignment.bottomCenter,
-                                      child: Text(info[a]["title"],
-                                          style: TextStyle(fontSize: 20, color: color.AppColor.homePageDetail)),
-                                    ))),
+                                  alignment: Alignment.bottomCenter,
+                                  child: Text(info[a]["title"],
+                                      style: TextStyle(fontSize: 20, color: color.AppColor.homePageDetail)),
+                                ))),
                             Container(
-                                width: (MediaQuery
-                                    .of(context)
-                                    .size
-                                    .width - 90) / 2,
+                                width: (MediaQuery.of(context).size.width - 90) / 2,
                                 height: 170,
                                 margin: const EdgeInsets.only(left: 30, bottom: 15, top: 15),
                                 padding: const EdgeInsets.only(bottom: 5),
@@ -284,10 +269,10 @@ class _HomePageState extends State<HomePage> {
                                     ]),
                                 child: Center(
                                     child: Align(
-                                      alignment: Alignment.bottomCenter,
-                                      child: Text(info[b]["title"],
-                                          style: TextStyle(fontSize: 20, color: color.AppColor.homePageDetail)),
-                                    )))
+                                  alignment: Alignment.bottomCenter,
+                                  child: Text(info[b]["title"],
+                                      style: TextStyle(fontSize: 20, color: color.AppColor.homePageDetail)),
+                                )))
                           ]);
                         }),
                   ),
