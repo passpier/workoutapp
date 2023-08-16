@@ -1,6 +1,6 @@
 # workoutapp
 
-A new Flutter workout app
+A Flutter workout clone app for practice.
 
 ## Getting Started
 
