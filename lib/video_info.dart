@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'colors.dart' as color;
+import 'dart:developer' as developer;
 
 class VideoInfo extends StatefulWidget {
   const VideoInfo({super.key});
@@ -15,7 +17,10 @@ class VideoInfo extends StatefulWidget {
 class _VideoInfoState extends State<VideoInfo> {
   List videoInfo = [];
   bool _playArea = false;
-  late VideoPlayerController _controller;
+  bool _isPlaying = false;
+  bool _disposed = false;
+  int _isPlayingIndex = -1;
+  VideoPlayerController? _controller;
 
   _initData() async {
     await DefaultAssetBundle.of(context).loadString("json/videoinfo.json").then((value) => {
@@ -29,6 +34,15 @@ class _VideoInfoState extends State<VideoInfo> {
   void initState() {
     super.initState();
     _initData();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _controller?.pause();
+    _controller?.dispose();
+    _controller = null;
+    super.dispose();
   }
 
   @override
@@ -147,6 +161,7 @@ class _VideoInfoState extends State<VideoInfo> {
                           ],
                         )),
                     _playView(context),
+                    _controlView(context),
                   ],
                 )),
           Expanded(
@@ -201,23 +216,208 @@ class _VideoInfoState extends State<VideoInfo> {
     ));
   }
 
+  String convertTwo(int value) {
+    return value < 10 ? "0$value" : "$value";
+  }
+
+  Widget _controlView(BuildContext context) {
+    final noMute = (_controller?.value.volume ?? 0) > 0;
+    final duration = _duration?.inSeconds ?? 0;
+    final head = _position?.inSeconds ?? 0;
+    final remained = max(0, duration - head);
+    final mins = convertTwo(remained ~/ 60.0);
+    final secs = convertTwo(remained % 60);
+    return Container(
+      height: 40,
+      width: MediaQuery.of(context).size.width,
+      margin: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          InkWell(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Container(
+                decoration: const BoxDecoration(shape: BoxShape.circle, boxShadow: [
+                  BoxShadow(offset: Offset(0.0, 0.0), blurRadius: 4.0, color: Color.fromARGB(50, 0, 0, 0))
+                ]),
+                child: Icon(
+                  noMute ? Icons.volume_up : Icons.volume_off,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            onTap: () {
+              if (noMute) {
+                _controller?.setVolume(0);
+              } else {
+                _controller?.setVolume(1.0);
+              }
+              setState(() {
+
+              });
+            },
+          ),
+          TextButton(
+            onPressed: () async {
+              final index = _isPlayingIndex - 1;
+              if (index >= 0 && videoInfo.isNotEmpty) {
+                _initializeVideo(index);
+              } else {
+                Get.snackbar("Video List", "",
+                    snackPosition: SnackPosition.BOTTOM,
+                    icon: const Icon(
+                      Icons.face,
+                      size: 30,
+                      color: Colors.white,
+                    ),
+                    backgroundColor: color.AppColor.gradientSecond,
+                    colorText: Colors.white,
+                    messageText: const Text("No videos ahead!", style: TextStyle(fontSize: 20, color: Colors.white)));
+              }
+            },
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero
+            ),
+            child: const Icon(Icons.fast_rewind, size: 36, color: Colors.white),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (_isPlaying) {
+                setState(() {
+                  _isPlaying = false;
+                });
+                _controller?.pause();
+              } else {
+                setState(() {
+                  _isPlaying = true;
+                });
+                _controller?.play();
+              }
+            },
+            style: TextButton.styleFrom(
+                padding: EdgeInsets.zero
+            ),
+            child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, size: 36, color: Colors.white),
+          ),
+          TextButton(
+            onPressed: () async {
+              final index = _isPlayingIndex + 1;
+              if (index <= videoInfo.length - 1) {
+                _initializeVideo(index);
+              } else {
+                Get.snackbar("Video List", "",
+                    snackPosition: SnackPosition.BOTTOM,
+                    icon: const Icon(
+                      Icons.face,
+                      size: 30,
+                      color: Colors.white,
+                    ),
+                    backgroundColor: color.AppColor.gradientSecond,
+                    colorText: Colors.white,
+                    messageText: const Text("You have finished watching all the videos.",
+                        style: TextStyle(fontSize: 20, color: Colors.white)));
+              }
+            },
+            style: TextButton.styleFrom(
+                padding: EdgeInsets.zero
+            ),
+            child: const Icon(Icons.fast_forward, size: 36, color: Colors.white),
+          ),
+          Text(
+            "$mins:$secs",
+            style: const TextStyle(
+              color: Colors.white,
+              shadows: <Shadow>[
+                Shadow(
+                  offset: Offset(0.0, 1.0),
+                  blurRadius: 4.0,
+                  color: Color.fromARGB(150, 0, 0, 0),
+                )
+              ]
+            )
+          )
+        ],
+      ),
+    );
+  }
+
   Widget _playView(BuildContext context) {
     final controller = _controller;
-    if (controller.value.isInitialized) {
+    if (controller != null && controller.value.isInitialized) {
       return AspectRatio(
-        aspectRatio: 16/9,
+        aspectRatio: 16 / 9,
         child: VideoPlayer(controller),
       );
     } else {
-      return const Text("Being initialized pls wait");
+      return const AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Center(
+              child: Text(
+            "Preparing...",
+            style: TextStyle(fontSize: 20, color: Colors.white60),
+          )));
     }
   }
 
-  _onTapVideo(int index) {
+  var _onUpdateControllerTime;
+  Duration? _duration;
+  Duration? _position;
+  var _progress = 0.0;
+  void _onControllerUpdate() async {
+    if (_disposed) {
+      return;
+    }
+
+    _onUpdateControllerTime = 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_onUpdateControllerTime > now) {
+      return;
+    }
+
+    _onUpdateControllerTime = now + 500;
+    final controller = _controller;
+    if (controller == null) {
+      debugPrint("controller can not be null");
+      return;
+    }
+    if (!controller.value.isInitialized) {
+      debugPrint("controller can not be initialized");
+      return;
+    }
+
+    _duration ??= _controller?.value.duration;
+    var duration = _duration;
+    if (duration == null) return;
+
+    var position = await controller.position;
+    _position = position;
+
+    final playing = controller.value.isPlaying;
+    if (playing) {
+      //handle progress indicator
+      if (_disposed) return;
+      setState(() {
+        // range: (0, 1), Ex: 45 / 60 = 0.75
+        _progress = position!.inMilliseconds.ceilToDouble() / duration.inMilliseconds.ceilToDouble();
+      });
+    }
+    _isPlaying = playing;
+  }
+
+  _initializeVideo(int index) {
+    if (_controller != null) {
+      _controller?.removeListener(_onControllerUpdate);
+      _controller?.pause();
+      _controller?.dispose();
+    }
     _controller = VideoPlayerController.networkUrl(Uri.parse(videoInfo[index]["videoUrl"]))
+      ..addListener(_onControllerUpdate)
       ..initialize().then((_) {
+        _isPlayingIndex = index;
         setState(() {});
-        _controller.play();
+        _controller?.play();
       });
   }
 
@@ -228,7 +428,7 @@ class _VideoInfoState extends State<VideoInfo> {
         itemBuilder: (_, int index) {
           return GestureDetector(
             onTap: () {
-              _onTapVideo(index);
+              _initializeVideo(index);
               debugPrint(index.toString());
               setState(() {
                 if (_playArea == false) {
