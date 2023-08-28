@@ -1,5 +1,10 @@
 # workoutapp
 
+<div style="display: flex; flex-direction: row;">
+    <img src="docs/home_screenshot.png" style="max-width: 50%;">
+    <img src="docs/video_screenshot.png" style="max-width: 50%;">
+</div>
+
 A Flutter workout clone app for practice.
 
 ## Getting Started
